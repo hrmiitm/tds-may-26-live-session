@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Podman/Docker + Local LLM Notes</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/black.css" id="theme">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+  <style>
+    :root { --accent: #73d7ff; --accent2: #a7f3d0; --warn: #facc15; }
+    .reveal { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .reveal h1, .reveal h2, .reveal h3 { text-transform: none; letter-spacing: -0.03em; }
+    .reveal h1 { font-size: 2.45em; }
+    .reveal h2 { font-size: 1.65em; color: var(--accent); }
+    .reveal h3 { color: var(--accent2); }
+    .reveal p, .reveal li { font-size: 0.78em; line-height: 1.35; }
+    .reveal pre code { max-height: 520px; font-size: 0.82em; line-height: 1.25; border-radius: 14px; padding: 18px; }
+    .reveal code { color: #d8f3ff; }
+    .pill { display:inline-block; padding:.18rem .55rem; border:1px solid rgba(115,215,255,.5); border-radius:999px; color:#d8f3ff; font-size:.55em; margin:.08rem; }
+    .muted { color:#cbd5e1; opacity:.86; }
+    .tiny { font-size:.48em !important; opacity:.82; }
+    .two { display:grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; align-items:start; }
+    .three { display:grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; align-items:start; }
+    .card { background: rgba(15,23,42,.72); border:1px solid rgba(148,163,184,.24); border-radius:20px; padding:1rem; box-shadow: 0 10px 34px rgba(0,0,0,.22); }
+    .card h3 { margin-top:0; font-size:0.92em; }
+    .ok { color:#86efac; }
+    .bad { color:#fca5a5; }
+    .warn { color:#fde68a; }
+    .cmd { color:#93c5fd; }
+    .footer-note { position: absolute; bottom: 10px; right: 18px; font-size: 0.34em; color: #94a3b8; }
+    .mermaid { background: transparent; }
+    table { font-size: .55em; }
+
+    /* Live pen / tablet drawing annotation layer */
+    #draw-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 40;
+      pointer-events: none;
+      touch-action: none;
+    }
+    #draw-canvas.drawing-enabled {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+    #draw-toolbar {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(2, 6, 23, 0.84);
+      border: 1px solid rgba(148, 163, 184, 0.38);
+      box-shadow: 0 16px 44px rgba(0, 0, 0, .35);
+      backdrop-filter: blur(10px);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      opacity: 0.72;
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    #draw-toolbar:hover,
+    #draw-toolbar.draw-on {
+      opacity: 1;
+    }
+    #draw-toolbar button,
+    #draw-toolbar input[type="color"] {
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(148, 163, 184, .34);
+      border-radius: 999px;
+      background: rgba(15, 23, 42, .92);
+      color: #e5e7eb;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+    #draw-toolbar button.active {
+      outline: 2px solid var(--accent);
+      color: #fff;
+    }
+    #draw-toolbar input[type="range"] {
+      width: 84px;
+      accent-color: var(--accent);
+    }
+    #draw-status {
+      color: #cbd5e1;
+      font-size: 12px;
+      min-width: 92px;
+      text-align: left;
+      user-select: none;
+    }
+    @media print {
+      #draw-toolbar, #draw-canvas { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+      <section data-markdown="slides.md"
+               data-separator="^\n---\n$"
+               data-separator-vertical="^\n--\n$">
+      </section>
+    </div>
+  </div>
+
+  <canvas id="draw-canvas" aria-label="Live drawing annotation layer"></canvas>
+  <div id="draw-toolbar" title="Live drawing tools">
+    <button id="draw-toggle" title="Toggle drawing: D or P">✏️</button>
+    <input id="draw-color" title="Pen color" type="color" value="#ffdf5d">
+    <input id="draw-size" title="Pen size" type="range" min="2" max="28" value="5">
+    <button id="draw-eraser" title="Toggle eraser: E">⌫</button>
+    <button id="draw-undo" title="Undo: Ctrl+Z">↶</button>
+    <button id="draw-clear" title="Clear current slide: C">🧹</button>
+    <span id="draw-status">Draw off</span>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/markdown/markdown.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+    Reveal.initialize({
+      hash: true,
+      slideNumber: true,
+      transition: 'slide',
+      controls: true,
+      progress: true,
+      center: true,
+      width: 1280,
+      height: 720,
+      plugins: [ RevealMarkdown, RevealHighlight ]
+    });
+    async function renderMermaid() {
+      const nodes = document.querySelectorAll('pre.mermaid, .mermaid');
+      try { await mermaid.run({ nodes }); } catch(e) { console.warn(e); }
+    }
+    Reveal.on('ready', renderMermaid);
+    Reveal.on('slidechanged', renderMermaid);
+
+    // Simple built-in drawing annotation layer. No speaker notes needed.
+    (function setupDrawingAnnotations() {
+      const STORAGE_KEY = 'podman-docker-local-llm-reveal-drawings-v1';
+      const canvas = document.getElementById('draw-canvas');
+      const ctx = canvas.getContext('2d');
+      const toolbar = document.getElementById('draw-toolbar');
+      const toggleBtn = document.getElementById('draw-toggle');
+      const colorInput = document.getElementById('draw-color');
+      const sizeInput = document.getElementById('draw-size');
+      const eraserBtn = document.getElementById('draw-eraser');
+      const undoBtn = document.getElementById('draw-undo');
+      const clearBtn = document.getElementById('draw-clear');
+      const status = document.getElementById('draw-status');
+
+      let enabled = false;
+      let erasing = false;
+      let drawing = false;
+      let lastPoint = null;
+      let activeKey = null;
+      let dpr = window.devicePixelRatio || 1;
+      let store = {};
+      let undoStacks = {};
+
+      try {
+        store = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      } catch (_) {
+        store = {};
+      }
+
+      function slideKey() {
+        const i = Reveal.getIndices();
+        return `${i.h || 0}-${i.v || 0}`;
+      }
+
+      function resizeCanvas() {
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(window.innerWidth * dpr);
+        canvas.height = Math.floor(window.innerHeight * dpr);
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+      }
+
+      function clearCanvasOnly() {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+      }
+
+      function saveStore() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+        } catch (e) {
+          console.warn('Could not save drawings. localStorage may be full.', e);
+        }
+      }
+
+      function saveCurrentSlide() {
+        if (!activeKey) return;
+        store[activeKey] = canvas.toDataURL('image/png');
+        saveStore();
+      }
+
+      function loadCurrentSlide() {
+        activeKey = slideKey();
+        clearCanvasOnly();
+        const data = store[activeKey];
+        if (!data) return;
+        const img = new Image();
+        img.onload = () => {
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        };
+        img.src = data;
+      }
+
+      function pushUndo() {
+        if (!activeKey) activeKey = slideKey();
+        if (!undoStacks[activeKey]) undoStacks[activeKey] = [];
+        undoStacks[activeKey].push(canvas.toDataURL('image/png'));
+        if (undoStacks[activeKey].length > 20) undoStacks[activeKey].shift();
+      }
+
+      function undo() {
+        const stack = undoStacks[activeKey] || [];
+        const data = stack.pop();
+        if (!data) return;
+        const img = new Image();
+        img.onload = () => {
+          clearCanvasOnly();
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+          saveCurrentSlide();
+        };
+        img.src = data;
+      }
+
+      function updateUI() {
+        canvas.classList.toggle('drawing-enabled', enabled);
+        toolbar.classList.toggle('draw-on', enabled);
+        toggleBtn.classList.toggle('active', enabled);
+        eraserBtn.classList.toggle('active', erasing);
+        status.textContent = enabled ? (erasing ? 'Eraser on' : 'Pen on') : 'Draw off';
+      }
+
+      function setEnabled(value) {
+        enabled = value;
+        if (!enabled) drawing = false;
+        updateUI();
+      }
+
+      function getPoint(evt) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+      }
+
+      function drawTo(point) {
+        if (!lastPoint) lastPoint = point;
+        ctx.save();
+        ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
+        ctx.strokeStyle = erasing ? 'rgba(0,0,0,1)' : colorInput.value;
+        ctx.lineWidth = Number(sizeInput.value);
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(point.x, point.y);
+        ctx.stroke();
+        ctx.restore();
+        lastPoint = point;
+      }
+
+      function dot(point) {
+        ctx.save();
+        ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
+        ctx.fillStyle = erasing ? 'rgba(0,0,0,1)' : colorInput.value;
+        const radius = Number(sizeInput.value) / 2;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      canvas.addEventListener('pointerdown', (evt) => {
+        if (!enabled) return;
+        evt.preventDefault();
+        canvas.setPointerCapture(evt.pointerId);
+        pushUndo();
+        drawing = true;
+        lastPoint = getPoint(evt);
+        dot(lastPoint);
+      });
+
+      canvas.addEventListener('pointermove', (evt) => {
+        if (!enabled || !drawing) return;
+        evt.preventDefault();
+        drawTo(getPoint(evt));
+      });
+
+      function endStroke(evt) {
+        if (!drawing) return;
+        evt.preventDefault();
+        drawing = false;
+        lastPoint = null;
+        saveCurrentSlide();
+      }
+      canvas.addEventListener('pointerup', endStroke);
+      canvas.addEventListener('pointercancel', endStroke);
+      canvas.addEventListener('lostpointercapture', () => {
+        if (drawing) saveCurrentSlide();
+        drawing = false;
+        lastPoint = null;
+      });
+
+      toggleBtn.addEventListener('click', () => setEnabled(!enabled));
+      eraserBtn.addEventListener('click', () => { erasing = !erasing; updateUI(); });
+      undoBtn.addEventListener('click', undo);
+      clearBtn.addEventListener('click', () => {
+        pushUndo();
+        clearCanvasOnly();
+        delete store[slideKey()];
+        saveStore();
+      });
+
+      window.addEventListener('keydown', (evt) => {
+        const tag = (evt.target && evt.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || evt.target?.isContentEditable) return;
+        const key = evt.key.toLowerCase();
+        if (key === 'd' || key === 'p') {
+          evt.preventDefault();
+          setEnabled(!enabled);
+        } else if (enabled && key === 'e') {
+          evt.preventDefault();
+          erasing = !erasing;
+          updateUI();
+        } else if (enabled && key === 'c') {
+          evt.preventDefault();
+          pushUndo();
+          clearCanvasOnly();
+          delete store[slideKey()];
+          saveStore();
+        } else if (enabled && (evt.ctrlKey || evt.metaKey) && key === 'z') {
+          evt.preventDefault();
+          undo();
+        } else if (enabled && key === 'escape') {
+          evt.preventDefault();
+          setEnabled(false);
+        }
+      }, true);
+
+      Reveal.on('ready', () => {
+        resizeCanvas();
+        loadCurrentSlide();
+        updateUI();
+      });
+      Reveal.on('slidechanged', () => {
+        saveCurrentSlide();
+        loadCurrentSlide();
+      });
+      window.addEventListener('resize', () => {
+        saveCurrentSlide();
+        resizeCanvas();
+        loadCurrentSlide();
+      });
+    })();
+
+  </script>
+</body>
+</html>
