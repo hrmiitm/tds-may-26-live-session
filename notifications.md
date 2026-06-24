@@ -1,3 +1,8 @@
+
+# [2026-06-25 15:00] [general] Project 1 Released
+- Deadline extended to Sunday, July 12th, 23:59 IST
+
+
 # [2026-06-25 14:00] [general] Project 2 Released
 - Deadline extended to Sunday, July 12th, 23:59 IST
 
