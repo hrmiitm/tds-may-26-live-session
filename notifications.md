@@ -1,10 +1,10 @@
-# [2026-06-25 14:00] [update] Project 2 Released
+# [2026-06-25 14:00] [general] Project 2 Released
 - Deadline extended to Sunday, July 12th, 23:59 IST
 
 
 
 
-# [2026-06-25 14:00] [update] Project 2 Released
+# [2026-06-25 14:00] [general] Project 2 Released
 - Deadline extended to Sunday, July 12th, 23:59 IST
 
 ---
@@ -25,7 +25,7 @@ Homework 3 is now available on the portal.
 
 ---
 
-# [2026-06-22 14:00] [update] New Lab Notebooks Added
+# [2026-06-22 14:00] [general] New Lab Notebooks Added
 New practice notebooks for Week 4 are now available in the repository.
 - Focuses on regression models and styling with CSS selectors.
 - Check the `2026-02/docs/labs` folder.
