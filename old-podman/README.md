@@ -8,27 +8,19 @@ python -m http.server 8000
 # open http://localhost:8000
 ```
 
-Press `D` or `P` to enable live drawing annotations. Use a pen tablet, mouse, or touch screen to draw directly on slides.
-
-## Drawing annotation controls
-
-This version does **not** use speaker notes or separate annotation markdown files. It has a built-in drawing canvas over the slides.
-
-| Action | Shortcut / Button |
-|---|---|
-| Toggle drawing mode | `D` or `P` or ✏️ |
-| Toggle eraser | `E` or ⌫ |
-| Undo last stroke | `Ctrl+Z` or ↶ |
-| Clear current slide | `C` or 🧹 |
-| Change color / size | Toolbar color and size controls |
-
-Drawings are stored per slide in your browser localStorage, so they can remain after refresh on the same browser.
+Press `S` for Reveal.js speaker view.
 
 ## Files
 
 ```txt
 index.html                              # Reveal.js presentation shell
 slides.md                               # slide content
+annotations/00_all_annotations.md       # complete teaching notes
+annotations/01-container-fundamentals.md
+annotations/02-images-containers-volumes-networks.md
+annotations/03-multiple-containers-compose.md
+annotations/04-local-llm-ollama-vllm.md
+annotations/05-full-stack-practice.md
 labs/                                   # small runnable practice projects
 ```
 

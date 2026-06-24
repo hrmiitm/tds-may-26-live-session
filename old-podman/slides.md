@@ -7,6 +7,10 @@
 <span class="pill">REST APIs</span>
 <span class="pill">quantization</span>
 
+<div class="footer-note">Annotations: annotations/00_all_annotations.md</div>
+
+Note:
+Use annotations/00_all_annotations.md as the detailed teaching script. This deck is command-first; annotations explain the mental models and common mistakes.
 
 ---
 
@@ -21,39 +25,21 @@ python -m http.server 8000
 # open http://localhost:8000</code></pre>
 </div>
 <div class="card">
-<h3>Draw while teaching</h3>
-<p>Press <code>D</code> or click ✏️ to enable pen drawing.</p>
-<p class="muted">Use pen tablet / mouse / touch. Labs are inside <code>labs/</code>.</p>
+<h3>Speaker view</h3>
+<p>Press <code>S</code> in Reveal.js. Each section points to a separate annotation file.</p>
+<p class="muted">Labs are inside <code>labs/</code>.</p>
 </div>
 </div>
 
----
-
-## Live drawing annotations
-
-<div class="three">
-<div class="card">
-<h3>Enable pen</h3>
-<p>Press <code>D</code> / <code>P</code> or click the ✏️ button.</p>
-<p class="muted">Works with mouse, touch, and pen tablet/stylus.</p>
-</div>
-<div class="card">
-<h3>Control</h3>
-<p><code>E</code> toggles eraser. <code>Ctrl+Z</code> undo. <code>C</code> clears current slide.</p>
-<p class="muted">Drawings are stored per slide in your browser.</p>
-</div>
-<div class="card">
-<h3>Teaching use</h3>
-<p>Circle commands, mark container layers, draw arrows, and solve examples live.</p>
-<p class="muted">Turn drawing off to navigate normally.</p>
-</div>
-</div>
+Note:
+Annotation: annotations/00_all_annotations.md#00-usage
 
 ---
 
 # Part 1
 ## Podman / Docker fundamentals
 
+<div class="footer-note">Annotation: annotations/01-container-fundamentals.md</div>
 
 ---
 
@@ -86,6 +72,9 @@ flowchart LR
   C[Container: app + libs] --> Runtime[container runtime] --> HostOS
 </pre>
 
+Note:
+Annotation: annotations/01-container-fundamentals.md#01-container-vs-vm
+
 ---
 
 ## The core mental model
@@ -103,6 +92,9 @@ flowchart LR
 </pre>
 
 <span class="pill">Dockerfile</span> <span class="pill">image</span> <span class="pill">container</span> <span class="pill">registry</span> <span class="pill">runtime</span>
+
+Note:
+Annotation: annotations/01-container-fundamentals.md#02-core-model
 
 ---
 
@@ -122,6 +114,9 @@ flowchart LR
 "it works in this image"
 ```
 
+Note:
+Annotation: annotations/01-container-fundamentals.md#03-why-containers
+
 ---
 
 ## Docker and Podman: same idea, different engine
@@ -139,6 +134,9 @@ flowchart LR
 docker run nginx
 podman run nginx
 ```
+
+Note:
+Annotation: annotations/01-container-fundamentals.md#04-docker-vs-podman
 
 ---
 
@@ -159,6 +157,9 @@ What happened?
 3. Runtime created a container.
 4. Process ran, printed output, exited.
 5. `--rm` removed the stopped container.
+
+Note:
+Annotation: annotations/01-container-fundamentals.md#05-first-container
 
 ---
 
@@ -184,11 +185,15 @@ docker exec -it my-web sh
 
 <span class="warn">Rule:</span> a container normally lives as long as its main process lives.
 
+Note:
+Annotation: annotations/01-container-fundamentals.md#06-lifecycle
+
 ---
 
 # Part 2
 ## images, containers, volumes, networks
 
+<div class="footer-note">Annotation: annotations/02-images-containers-volumes-networks.md</div>
 
 ---
 
@@ -213,6 +218,9 @@ CMD ["python", "app.py"]
 <span class="pill">Put slow-changing layers first</span>
 <span class="pill">Put app code later</span>
 
+Note:
+Annotation: annotations/02-images-containers-volumes-networks.md#01-image-layers
+
 ---
 
 ## Build, tag, run
@@ -236,6 +244,9 @@ host:container
 8000:8000
 ```
 
+Note:
+Annotation: annotations/02-images-containers-volumes-networks.md#02-build-tag-run
+
 ---
 
 ## Container filesystem is temporary
@@ -254,6 +265,9 @@ If data matters, use a volume or bind mount.
 
 <span class="bad">Do not store database state only inside a disposable container layer.</span>
 
+Note:
+Annotation: annotations/02-images-containers-volumes-networks.md#03-ephemeral-fs
+
 ---
 
 ## Volumes vs bind mounts
@@ -271,6 +285,9 @@ docker run -v pgdata:/var/lib/postgresql/data postgres</code></pre>
 <p>Best for local development files.</p>
 </div>
 </div>
+
+Note:
+Annotation: annotations/02-images-containers-volumes-networks.md#04-volumes-bind-mounts
 
 ---
 
@@ -292,6 +309,9 @@ api calls ollama:11434
 browser calls localhost:8000
 ```
 
+Note:
+Annotation: annotations/02-images-containers-volumes-networks.md#05-networking
+
 ---
 
 ## Port publishing is not container networking
@@ -310,6 +330,9 @@ Key distinction:
 |---|---|
 | `localhost:8080` | host → container |
 | `service-name:port` | container → container |
+
+Note:
+Annotation: annotations/02-images-containers-volumes-networks.md#06-port-publishing
 
 ---
 
@@ -331,11 +354,15 @@ docker system df
 
 <span class="warn">Volume prune can delete database data.</span>
 
+Note:
+Annotation: annotations/02-images-containers-volumes-networks.md#07-cleanup
+
 ---
 
 # Part 3
 ## running multiple containers + Compose
 
+<div class="footer-note">Annotation: annotations/03-multiple-containers-compose.md</div>
 
 ---
 
@@ -353,6 +380,9 @@ flowchart LR
 </pre>
 
 Instead of manually starting 5 containers, declare the stack once.
+
+Note:
+Annotation: annotations/03-multiple-containers-compose.md#01-why-multiple
 
 ---
 
@@ -372,6 +402,9 @@ docker run -d --name api --network demo-net -p 8000:8000 my-api
 ```
 
 Works, but becomes painful for real projects.
+
+Note:
+Annotation: annotations/03-multiple-containers-compose.md#02-manual-network
 
 ---
 
@@ -401,6 +434,9 @@ volumes:
 docker compose up --build
 ```
 
+Note:
+Annotation: annotations/03-multiple-containers-compose.md#03-compose-blueprint
+
 ---
 
 ## Compose commands you will use daily
@@ -425,6 +461,9 @@ docker compose down
 # also delete named volumes
 docker compose down -v
 ```
+
+Note:
+Annotation: annotations/03-multiple-containers-compose.md#04-compose-commands
 
 ---
 
@@ -451,6 +490,9 @@ healthcheck:
   retries: 10
 ```
 
+Note:
+Annotation: annotations/03-multiple-containers-compose.md#05-depends-on
+
 ---
 
 ## Podman Compose options
@@ -470,6 +512,9 @@ podman logs container_name
 ```
 
 Podman is especially useful when you want rootless containers and daemonless operation.
+
+Note:
+Annotation: annotations/03-multiple-containers-compose.md#06-podman-compose
 
 ---
 
@@ -499,11 +544,15 @@ Test:
 curl http://localhost:8000/count
 ```
 
+Note:
+Annotation: annotations/03-multiple-containers-compose.md#07-mini-lab
+
 ---
 
 # Part 4
 ## Local LLM: Ollama + vLLM
 
+<div class="footer-note">Annotation: annotations/04-local-llm-ollama-vllm.md</div>
 
 ---
 
@@ -524,6 +573,9 @@ You are not just “installing a chatbot”. You are running an inference server
 <span class="pill">sampling parameters</span>
 <span class="pill">GPU memory</span>
 
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#01-local-llm-model
+
 ---
 
 ## Ollama vs vLLM
@@ -540,6 +592,9 @@ ollama run llama3.2
 # vLLM style
 vllm serve meta-llama/Llama-3.1-8B-Instruct --dtype auto
 ```
+
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#02-ollama-vs-vllm
 
 ---
 
@@ -559,6 +614,9 @@ ollama show llama3.2
 
 Small models are better for weak laptops. Larger models need more RAM/VRAM.
 
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#03-running-ollama
+
 ---
 
 ## Important generation parameters
@@ -576,6 +634,9 @@ ollama run llama3.2
 /set parameter temperature 0.2
 /set parameter num_ctx 4096
 ```
+
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#04-parameters
 
 ---
 
@@ -596,6 +657,9 @@ curl http://localhost:11434/api/generate \
 
 Use REST API when connecting your app, bot, or RAG system to local models.
 
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#05-generate-api
+
 ---
 
 ## Ollama REST API: chat
@@ -613,6 +677,9 @@ curl http://localhost:11434/api/chat \
 ```
 
 `/api/chat` is better for multi-turn conversations.
+
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#06-chat-api
 
 ---
 
@@ -636,6 +703,9 @@ ollama create devops-tutor -f Modelfile
 ollama run devops-tutor
 ```
 
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#07-modelfile
+
 ---
 
 ## What quantization does
@@ -655,6 +725,9 @@ flowchart LR
   Small --> LessMemory[less RAM/VRAM]
   Small --> Tradeoff[possible quality drop]
 </pre>
+
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#08-quantization
 
 ---
 
@@ -677,6 +750,9 @@ Practical starting points:
 | 8 GB VRAM | 7B–8B quantized |
 | 16+ GB VRAM | 8B–14B, maybe less aggressive quantization |
 
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#09-choosing-quantized
+
 ---
 
 ## vLLM server: OpenAI-compatible local endpoint
@@ -698,6 +774,9 @@ curl http://localhost:8000/v1/chat/completions \
   -d '{"model":"meta-llama/Llama-3.1-8B-Instruct", "messages":[{"role":"user","content":"hi"}]}'
 ```
 
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#10-vllm-server
+
 ---
 
 ## Ollama API vs vLLM API
@@ -711,11 +790,15 @@ curl http://localhost:8000/v1/chat/completions \
 
 Choose Ollama for teaching and fast demos. Choose vLLM when you want a serious inference server.
 
+Note:
+Annotation: annotations/04-local-llm-ollama-vllm.md#11-api-comparison
+
 ---
 
 # Part 5
 ## full-stack local LLM pattern
 
+<div class="footer-note">Annotation: annotations/05-full-stack-practice.md</div>
 
 ---
 
@@ -734,6 +817,9 @@ Compose lets you run this whole local stack as one project.
 ```bash
 docker compose up --build
 ```
+
+Note:
+Annotation: annotations/05-full-stack-practice.md#01-full-stack-pattern
 
 ---
 
@@ -761,6 +847,9 @@ volumes:
   ollama_models:
 ```
 
+Note:
+Annotation: annotations/05-full-stack-practice.md#02-compose-ollama
+
 ---
 
 ## Python call to Ollama
@@ -781,6 +870,9 @@ response = requests.post(f"{base_url}/api/generate", json=payload, timeout=120)
 response.raise_for_status()
 print(response.json()["response"])
 ```
+
+Note:
+Annotation: annotations/05-full-stack-practice.md#03-python-ollama
 
 ---
 
@@ -806,6 +898,9 @@ docker inspect container_name
 
 Debug one layer at a time: process → port → network → environment → volume.
 
+Note:
+Annotation: annotations/05-full-stack-practice.md#04-debugging
+
 ---
 
 ## Common mistakes
@@ -825,6 +920,9 @@ OLLAMA_BASE_URL = "http://ollama:11434"</code></pre>
 </div>
 </div>
 
+Note:
+Annotation: annotations/05-full-stack-practice.md#05-common-mistakes
+
 ---
 
 ## Practice questions
@@ -837,6 +935,9 @@ OLLAMA_BASE_URL = "http://ollama:11434"</code></pre>
 6. What changes when you increase `temperature`?
 7. Why does quantization reduce memory?
 8. When would you choose vLLM instead of Ollama?
+
+Note:
+Annotation: annotations/05-full-stack-practice.md#06-practice-questions
 
 ---
 
@@ -858,6 +959,9 @@ flowchart TD
   VLLM --> OAI[OpenAI-compatible API]
   LLM --> Q[Quantization]
 </pre>
+
+Note:
+Annotation: annotations/00_all_annotations.md#final-memory-map
 
 ---
 
