@@ -1,43 +1,40 @@
-<div class="hero-center">
-<div>
-<div class="title-kicker">TDS • Ship the API</div>
-<h1>Deployment</h1>
-<p class="big">Small FastAPI app → Hugging Face Space → config → logs for future debugging.</p>
-<p><span class="tag">Docker Space</span><span class="tag">env</span><span class="tag">secrets</span><span class="tag">logging</span></p>
-</div>
-</div>
+<div class="titlemark">TDS Web Apps • Topic 2</div>
+
+# Deployment
+
+Build a small FastAPI app, deploy it, manage config, and keep logs for debugging.
+
+<span class="pill">Hugging Face Spaces</span><span class="pill">Config</span><span class="pill">Secrets</span><span class="pill">Logging</span>
 
 ---
 
-## Deployment is a repeatable story
+## What deployment really means
 
 <div class="flow">
-  <div class="node">Code</div><div class="arrow">→</div>
-  <div class="node">Dependencies</div><div class="arrow">→</div>
-  <div class="node">Config</div><div class="arrow">→</div>
-  <div class="node">Runtime</div><div class="arrow">→</div>
-  <div class="node">Logs</div>
+  <span class="box">Code works locally</span><span class="arrow">→</span>
+  <span class="box">Runs on remote machine</span><span class="arrow">→</span>
+  <span class="box">Config comes from environment</span><span class="arrow">→</span>
+  <span class="box">Logs explain failures</span>
 </div>
-
-<div class="callout">If it works only on your laptop, it is not deployed. Deployment means another machine can build and run it reliably.</div>
 
 ---
 
-## Small app structure
+## Minimal app structure
 
 ```text
-tds-api/
-├─ app.py
-├─ requirements.txt
-├─ Dockerfile
-└─ README.md
+app/
+  main.py
+  settings.py
+  logging_config.py
+pyproject.toml
+README.md
 ```
 
 ```python
-# app.py
+# app/main.py
 from fastapi import FastAPI
 
-app = FastAPI()
+app = FastAPI(title="TDS Deploy Demo")
 
 @app.get("/health")
 def health():
@@ -46,151 +43,166 @@ def health():
 
 ---
 
-## Run locally first
+## Local run
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install fastapi uvicorn
-uvicorn app:app --host 0.0.0.0 --port 7860 --reload
+uv add fastapi uvicorn pydantic-settings
+uv run uvicorn app.main:app --host 0.0.0.0 --port 7860
 ```
 
-<div class="grid2">
-<div class="card"><h3>Local test</h3><p><code>/health</code> returns JSON.</p></div>
-<div class="card"><h3>Deployment test</h3><p>Same route works on remote URL.</p></div>
-</div>
-
----
-
-## Hugging Face Space: Docker runtime
-
-<div class="flow">
-  <div class="node">Create Space</div><div class="arrow">→</div>
-  <div class="node">Select Docker</div><div class="arrow">→</div>
-  <div class="node">Push files</div><div class="arrow">→</div>
-  <div class="node">Build logs</div><div class="arrow">→</div>
-  <div class="node">Public URL</div>
-</div>
-
-<p class="muted">Hugging Face Spaces conventionally serves apps on port <code>7860</code>.</p>
-
----
-
-## Dockerfile for FastAPI Space
-
-```dockerfile
-FROM python:3.12-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-EXPOSE 7860
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
-```
-
-```text
-# requirements.txt
-fastapi
-uvicorn[standard]
-```
+<p class="small"><b>7860</b> is commonly used by Hugging Face Spaces web apps.</p>
 
 ---
 
 ## Config management
 
-<div class="grid2">
-<div class="card"><h3>Never hard-code</h3><p>API keys, database URLs, admin emails, model names.</p></div>
-<div class="card"><h3>Use environment</h3><p>Different values for local, test, production.</p></div>
-</div>
-
 ```python
-import os
-
-APP_ENV = os.getenv("APP_ENV", "local")
-ADMIN_EMAILS = os.getenv("ADMIN_EMAILS", "").split(",")
-```
-
----
-
-## Better config with settings object
-
-```bash
-pip install pydantic-settings
-```
-
-```python
+# app/settings.py
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    app_env: str = "local"
-    admin_emails: list[str] = []
-    log_level: str = "INFO"
+    app_name: str = "TDS Deploy Demo"
+    debug: bool = False
+    allowed_origin: str = "http://localhost:5173"
+    api_key: str | None = None
 
 settings = Settings()
 ```
 
-<p class="muted">One object keeps config readable and testable.</p>
+```bash
+DEBUG=true API_KEY=dev-secret uv run uvicorn app.main:app --reload
+```
 
 ---
 
-## Logging: what happened, when, and why
+## Config rule
+
+<div class="three">
+<div class="card"><b>Code</b><p class="small">Business logic, routes, models</p></div>
+<div class="card"><b>Config</b><p class="small">Port, origin, database URL, model name</p></div>
+<div class="card"><b>Secrets</b><p class="small">API keys, OAuth secrets, tokens</p></div>
+</div>
+
+> Never hard-code secrets inside GitHub code.
+
+---
+
+## Logging: future debugging
 
 ```python
+# app/logging_config.py
 import logging
+import sys
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
-logger = logging.getLogger("tds-api")
 
-@app.get("/health")
-def health():
-    logger.info("health_check")
-    return {"ok": True}
+logger = logging.getLogger("tds-app")
 ```
-
-<div class="callout">Use logs to answer: request came? config loaded? external API failed? exception trace?</div>
 
 ---
 
-## Store/export logs for future debugging
-
-<div class="grid3">
-<div class="card"><h3>stdout</h3><p>Best for cloud platforms and containers.</p></div>
-<div class="card"><h3>file</h3><p>Useful locally; rotate large logs.</p></div>
-<div class="card"><h3>JSON</h3><p>Easy to search in log systems.</p></div>
-</div>
+## Use logs inside routes
 
 ```python
-logger.info("job_created", extra={"job_id": job_id, "target": url})
-logger.exception("job_failed")  # includes traceback
+from app.logging_config import logger
+
+@app.get("/items/{item_id}")
+def get_item(item_id: int):
+    logger.info("fetch_item item_id=%s", item_id)
+    return {"item_id": item_id}
+```
+
+<p class="small">Good logs answer: what happened, when, for which input, and where.</p>
+
+---
+
+## Store logs locally during development
+
+```python
+import logging
+from logging.handlers import RotatingFileHandler
+
+file_handler = RotatingFileHandler(
+    "app.log",
+    maxBytes=1_000_000,
+    backupCount=3,
+)
+logging.getLogger().addHandler(file_handler)
+```
+
+<p class="small">In hosted platforms, stdout logs are usually collected by the platform.</p>
+
+---
+
+## Deploy on Hugging Face Space
+
+```text
+Create Space → SDK: Docker or Gradio Static? For FastAPI choose Docker.
+```
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY . .
+RUN pip install uv && uv sync --frozen || uv sync
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
 ```
 
 ---
 
-## Production checklist
+## Health checks
 
-<ul class="checklist">
-<li><strong>/health</strong> endpoint works.</li>
-<li><strong>Secrets</strong> are environment variables, not committed.</li>
-<li><strong>Logs</strong> show startup and errors.</li>
-<li><strong>CORS</strong> has real frontend origins, not unlimited production wildcard.</li>
-<li><strong>Timeouts</strong> exist for all external HTTP calls.</li>
-</ul>
+```python
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "debug": settings.debug,
+    }
+```
+
+<div class="flow">
+  <span class="box">Browser</span><span class="arrow">→</span>
+  <span class="box">/health</span><span class="arrow">→</span>
+  <span class="box">Is app alive?</span>
+</div>
 
 ---
 
-## Debugging flow
+## Deployment checklist
 
-<div class="flow">
-  <div class="node">User says broken</div><div class="arrow">→</div>
-  <div class="node">Check health</div><div class="arrow">→</div>
-  <div class="node">Read logs</div><div class="arrow">→</div>
-  <div class="node">Reproduce locally</div><div class="arrow">→</div>
-  <div class="node">Patch + redeploy</div>
+- App starts with one command.
+- Port is correct.
+- Secrets come from environment variables.
+- CORS is configured for real frontend.
+- Logs go to stdout.
+- <code>/health</code> works.
+
+---
+
+## Common mistakes
+
+<div class="split">
+<div class="card"><h3>Works locally only</h3><p class="small">Using relative files, missing dependencies, wrong port.</p></div>
+<div class="card"><h3>No debugging trail</h3><p class="small">No logs, no request IDs, swallowing exceptions.</p></div>
 </div>
 
-<p class="muted">A deployed app without logs is like debugging in the dark.</p>
+---
+
+## Practice
+
+1. Create <code>/health</code>, <code>/config</code>, <code>/echo</code> routes.
+2. Read <code>APP_NAME</code> from env.
+3. Log every request input.
+4. Deploy and check logs after one failed request.
+
+---
+
+# Mental model
+
+**Deployment is not “upload code”. It is repeatable startup + external config + observable behavior.**

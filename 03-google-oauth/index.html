@@ -1,26 +1,172 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Google OAuth in FastAPI</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
-  <link rel="stylesheet" href="../assets/tds-theme.css">
-  <link rel="stylesheet" href="../assets/annotation.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Google OAuth</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css" />
+  <style>
+    :root { --accent:#7dd3fc; --accent2:#a78bfa; --bg:#070b14; --panel:rgba(8,12,22,.72); --text:#eef7ff; }
+    html, body { background: radial-gradient(circle at 20% 10%, #172554 0, transparent 26%), radial-gradient(circle at 80% 20%, #4c1d95 0, transparent 24%), #030712; }
+    .reveal { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); }
+    .reveal h1,.reveal h2,.reveal h3 { letter-spacing:-.045em; text-transform:none; font-weight:850; }
+    .reveal h1 { font-size:2.6em; }
+    .reveal h2 { font-size:1.65em; color:#eff6ff; }
+    .reveal h3 { font-size:1.05em; color:var(--accent); }
+    .reveal p,.reveal li { font-size:.72em; line-height:1.45; }
+    .reveal strong { color:#fef3c7; }
+    .reveal em { color:#bfdbfe; font-style:normal; }
+    .reveal code { border-radius:8px; padding:.08em .28em; background:rgba(255,255,255,.10); }
+    .reveal pre { width:94%; font-size:.45em; border-radius:18px; overflow:hidden; box-shadow:0 18px 60px rgba(0,0,0,.35); }
+    .reveal blockquote { width:82%; border-left:6px solid var(--accent); background:rgba(255,255,255,.06); border-radius:18px; padding:18px 28px; box-shadow:none; }
+    .pill { display:inline-block; padding:.28rem .7rem; border:1px solid rgba(125,211,252,.45); border-radius:999px; background:rgba(125,211,252,.10); color:#dff7ff; font-size:.42em; margin:.15rem; }
+    .split { display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; align-items:center; }
+    .three { display:grid; grid-template-columns:repeat(3,1fr); gap:.9rem; }
+    .card { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); border-radius:24px; padding:1rem; box-shadow:0 15px 50px rgba(0,0,0,.22); }
+    .small { font-size:.55em!important; opacity:.92; }
+    .tiny { font-size:.43em!important; opacity:.78; }
+    .flow { font-size:.62em; display:flex; gap:.5rem; justify-content:center; align-items:center; flex-wrap:wrap; }
+    .box { padding:.55rem .8rem; border-radius:14px; background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.13); }
+    .arrow { color:var(--accent); font-weight:900; }
+    .kbd { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; border:1px solid rgba(255,255,255,.24); background:rgba(255,255,255,.10); border-radius:8px; padding:.12rem .34rem; }
+    .titlemark { font-size:.38em; letter-spacing:.12em; text-transform:uppercase; color:#a5f3fc; }
+    .reveal .progress { color: var(--accent); }
+    .reveal .slide-number { background:rgba(0,0,0,.38); border-radius:999px; }
+    #drawCanvas { position:fixed; inset:0; z-index:40; pointer-events:none; touch-action:none; }
+    #drawToolbar { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:50; display:flex; align-items:center; gap:6px; padding:7px; border-radius:999px; background:var(--panel); backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,.16); box-shadow:0 18px 60px rgba(0,0,0,.38); opacity:.18; transition:opacity .25s ease, transform .25s ease; }
+    #drawToolbar:hover, #drawToolbar.active { opacity:1; transform:translateX(-50%) translateY(-3px); }
+    #drawToolbar button, #drawToolbar label { border:0; color:white; background:rgba(255,255,255,.10); border-radius:999px; padding:9px 12px; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; user-select:none; }
+    #drawToolbar button:hover, #drawToolbar label:hover, #drawToolbar .on { background:rgba(125,211,252,.24); outline:1px solid rgba(125,211,252,.45); }
+    #drawToolbar input[type=color] { width:30px; height:30px; border:0; padding:0; background:transparent; }
+    #drawToolbar input[type=range] { width:88px; accent-color:var(--accent); }
+    #drawToolbar input[type=file] { display:none; }
+    #helpBox { position:fixed; right:18px; bottom:84px; z-index:51; width:min(460px, calc(100vw - 36px)); display:none; background:rgba(6,11,20,.92); backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,.15); border-radius:24px; color:white; padding:18px; font:14px/1.5 system-ui,sans-serif; box-shadow:0 20px 70px rgba(0,0,0,.45); }
+    #helpBox h3 { margin:.1rem 0 .5rem; color:var(--accent); }
+    #helpBox .grid { display:grid; grid-template-columns:1fr 1fr; gap:.4rem .8rem; }
+    #loader { min-height:100vh; display:grid; place-items:center; color:#e0f2fe; font-family:system-ui,sans-serif; padding:2rem; text-align:center; background:#030712; }
+    #loader .panel { max-width:760px; border:1px solid rgba(255,255,255,.14); border-radius:28px; padding:2rem; background:rgba(255,255,255,.06); box-shadow:0 20px 80px rgba(0,0,0,.35); }
+    #loader input { margin-top:1rem; }
+    @media print { #drawToolbar,#helpBox,#loader { display:none!important; } #drawCanvas { z-index:99999; } }
+  </style>
 </head>
 <body>
-  <div class="reveal">
-    <div class="slides">
-      <section data-markdown="slides.md" data-separator="^---$" data-separator-vertical="^--$" data-separator-notes="^Note:"></section>
+  <div class="reveal"><div class="slides" id="slides"></div></div>
+  <canvas id="drawCanvas"></canvas>
+  <div id="drawToolbar" aria-label="Drawing annotation toolbar">
+    <button id="penBtn" title="Draw (D)">✎ Pen</button>
+    <button id="eraseBtn" title="Erase (E)">⌫ Erase</button>
+    <input id="colorPick" title="Pen color" type="color" value="#7dd3fc" />
+    <input id="sizePick" title="Pen size" type="range" min="2" max="32" value="6" />
+    <button id="undoBtn" title="Undo (U)">↶</button>
+    <button id="clearBtn" title="Clear current slide (C)">Clear</button>
+    <button id="clearAllBtn" title="Clear all annotations (X)">Clear all</button>
+    <button id="saveBtn" title="Export annotations JSON (S)">Export</button>
+    <label title="Import annotations JSON (L)">Import<input id="loadFile" type="file" accept="application/json,.json" /></label>
+    <button id="pdfBtn" title="Open PDF print mode (P)">PDF</button>
+    <button id="helpBtn" title="Shortcuts (?)">?</button>
+  </div>
+  <div id="helpBox">
+    <h3>Annotation shortcuts</h3>
+    <div class="grid">
+      <div><span class="kbd">D</span> Pen mode</div><div><span class="kbd">E</span> Eraser mode</div>
+      <div><span class="kbd">Esc</span> Stop drawing</div><div><span class="kbd">U</span> Undo slide</div>
+      <div><span class="kbd">C</span> Clear slide</div><div><span class="kbd">X</span> Clear all</div>
+      <div><span class="kbd">S</span> Export JSON</div><div><span class="kbd">L</span> Import JSON</div>
+      <div><span class="kbd">P</span> PDF print mode</div><div><span class="kbd">?</span> Help</div>
     </div>
+    <p style="opacity:.75;margin-bottom:0">PDF: click <b>PDF</b>, then browser <b>Print → Save as PDF</b>. Use a local server if your browser blocks loading <code>slides.md</code> from file URLs.</p>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/markdown/markdown.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/zoom/zoom.js"></script>
-  <script src="../assets/deck-loader.js"></script>
-  <script src="../assets/annotation.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script>
+    const slidesEl = document.getElementById('slides');
+    const storageKey = 'tds-reveal-annotations:' + location.pathname;
+    async function loadSlides() {
+      try {
+        const res = await fetch('slides.md?ts=' + Date.now(), {cache:'no-store'});
+        if (!res.ok) throw new Error('slides.md not found');
+        return await res.text();
+      } catch (err) {
+        document.body.insertAdjacentHTML('beforeend', `<div id="loader"><div class="panel"><h1>Load slides.md</h1><p>Your browser blocked direct file loading. Keep <b>index.html</b> and <b>slides.md</b> in this same folder, then choose slides.md here; or open through any local static server.</p><input id="manualSlides" type="file" accept=".md,text/markdown,text/plain" /></div></div>`);
+        return await new Promise(resolve => {
+          document.getElementById('manualSlides').addEventListener('change', e => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => { document.getElementById('loader').remove(); resolve(reader.result); };
+            reader.readAsText(file);
+          });
+        });
+      }
+    }
+    function mountMarkdown(md) {
+      const sec = document.createElement('section');
+      sec.setAttribute('data-markdown','');
+      sec.setAttribute('data-separator','^---\\s*$');
+      sec.setAttribute('data-separator-vertical','^--\\s*$');
+      sec.setAttribute('data-separator-notes','^Note:');
+      const script = document.createElement('script');
+      script.type = 'text/template';
+      script.textContent = md;
+      sec.appendChild(script);
+      slidesEl.appendChild(sec);
+    }
+    function slideKey() {
+      const i = Reveal.getIndices();
+      return [i.h || 0, i.v || 0, i.f || 0].join(':');
+    }
+    const canvas = document.getElementById('drawCanvas'), ctx = canvas.getContext('2d');
+    let mode = 'off', drawing = false, current = null;
+    let annotations = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    function fitCanvas() { canvas.width = innerWidth * devicePixelRatio; canvas.height = innerHeight * devicePixelRatio; canvas.style.width = innerWidth+'px'; canvas.style.height = innerHeight+'px'; ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); redraw(); }
+    function setMode(next) { mode = mode === next ? 'off' : next; canvas.style.pointerEvents = mode === 'off' ? 'none' : 'auto'; penBtn.classList.toggle('on', mode==='pen'); eraseBtn.classList.toggle('on', mode==='erase'); toolbarPulse(); }
+    function redraw() {
+      ctx.clearRect(0,0,innerWidth,innerHeight);
+      const paths = annotations[slideKey()] || [];
+      for (const p of paths) drawPath(p);
+    }
+    function drawPath(p) {
+      if (!p.points || p.points.length < 2) return;
+      ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round'; ctx.globalCompositeOperation = p.mode === 'erase' ? 'destination-out' : 'source-over'; ctx.strokeStyle = p.color || '#7dd3fc'; ctx.lineWidth = p.size || 6;
+      ctx.beginPath();
+      p.points.forEach((pt,idx)=>{ const x=pt[0]*innerWidth, y=pt[1]*innerHeight; idx?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+      ctx.stroke(); ctx.restore();
+    }
+    function point(e){ return [e.clientX/innerWidth, e.clientY/innerHeight]; }
+    canvas.addEventListener('pointerdown', e => { if(mode==='off') return; drawing=true; canvas.setPointerCapture(e.pointerId); current={mode, color:colorPick.value, size:Number(sizePick.value), points:[point(e)]}; (annotations[slideKey()] ||= []).push(current); e.preventDefault(); });
+    canvas.addEventListener('pointermove', e => { if(!drawing || !current) return; current.points.push(point(e)); redraw(); e.preventDefault(); });
+    function endDraw(){ if(!drawing) return; drawing=false; current=null; persist(); }
+    canvas.addEventListener('pointerup', endDraw); canvas.addEventListener('pointercancel', endDraw);
+    function persist(){ localStorage.setItem(storageKey, JSON.stringify(annotations)); }
+    function undo(){ const k=slideKey(); (annotations[k] ||= []).pop(); persist(); redraw(); }
+    function clearSlide(){ annotations[slideKey()] = []; persist(); redraw(); }
+    function clearAll(){ if(confirm('Clear annotations from every slide?')) { annotations={}; persist(); redraw(); } }
+    function exportJSON(){ const blob = new Blob([JSON.stringify({version:1, exportedAt:new Date().toISOString(), annotations}, null, 2)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='reveal-annotations.json'; a.click(); URL.revokeObjectURL(a.href); }
+    function importJSON(file){ const r=new FileReader(); r.onload=()=>{ const data=JSON.parse(r.result); annotations=data.annotations || data; persist(); redraw(); }; r.readAsText(file); }
+    const penBtn=document.getElementById('penBtn'), eraseBtn=document.getElementById('eraseBtn'), colorPick=document.getElementById('colorPick'), sizePick=document.getElementById('sizePick');
+    penBtn.onclick=()=>setMode('pen'); eraseBtn.onclick=()=>setMode('erase'); undoBtn.onclick=undo; clearBtn.onclick=clearSlide; clearAllBtn.onclick=clearAll; saveBtn.onclick=exportJSON; loadFile.onchange=e=>e.target.files[0]&&importJSON(e.target.files[0]);
+    pdfBtn.onclick=()=>{ const url = new URL(location.href); url.searchParams.set('print-pdf',''); window.open(url.toString(), '_blank'); };
+    helpBtn.onclick=()=>{ const h=document.getElementById('helpBox'); h.style.display = h.style.display==='block' ? 'none' : 'block'; toolbarPulse(); };
+    function toolbarPulse(){ const t=document.getElementById('drawToolbar'); t.classList.add('active'); clearTimeout(toolbarPulse.t); toolbarPulse.t=setTimeout(()=>t.classList.remove('active'),2200); }
+    addEventListener('mousemove', toolbarPulse, {passive:true}); addEventListener('resize', fitCanvas);
+    document.addEventListener('keydown', e => {
+      if (e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      const k=e.key.toLowerCase();
+      if(k==='d'){ setMode('pen'); e.preventDefault(); }
+      if(k==='e'){ setMode('erase'); e.preventDefault(); }
+      if(k==='escape'){ mode='off'; canvas.style.pointerEvents='none'; penBtn.classList.remove('on'); eraseBtn.classList.remove('on'); }
+      if(k==='u'){ undo(); e.preventDefault(); }
+      if(k==='c'){ clearSlide(); e.preventDefault(); }
+      if(k==='x'){ clearAll(); e.preventDefault(); }
+      if(k==='s'){ exportJSON(); e.preventDefault(); }
+      if(k==='l'){ loadFile.click(); e.preventDefault(); }
+      if(k==='p'){ pdfBtn.click(); e.preventDefault(); }
+      if(k==='?'){ helpBtn.click(); e.preventDefault(); }
+    });
+    (async()=>{ mountMarkdown(await loadSlides()); Reveal.initialize({ hash:true, slideNumber:'c/t', controls:true, progress:true, center:true, transition:'slide', backgroundTransition:'fade', plugins:[RevealMarkdown, RevealHighlight, RevealNotes], markdown:{smartypants:true}, width:1280, height:720, margin:0.055 }); Reveal.on('slidechanged', redraw); Reveal.on('ready', ()=>{ fitCanvas(); toolbarPulse(); }); })();
+  </script>
 </body>
 </html>

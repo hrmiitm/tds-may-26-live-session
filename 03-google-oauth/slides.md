@@ -1,110 +1,73 @@
-<div class="hero-center">
-<div>
-<div class="title-kicker">TDS • Authentication</div>
-<h1>Google OAuth in FastAPI</h1>
-<p class="big">Login with Google, verify identity, then allow/deny users from a local database.</p>
-<p><span class="tag">OAuth</span><span class="tag">OIDC</span><span class="tag">session</span><span class="tag">allowlist</span></p>
-</div>
-</div>
+<div class="titlemark">TDS Web Apps • Topic 3</div>
+
+# Google OAuth in FastAPI
+
+Login with Google, create sessions, and allow or block users using a local database.
+
+<span class="pill">OAuth</span><span class="pill">Session</span><span class="pill">Callback</span><span class="pill">Allowlist DB</span>
 
 ---
 
-## OAuth is delegated login
+## Why OAuth?
 
 <div class="flow">
-  <div class="node">User</div><div class="arrow">→</div>
-  <div class="node">Your app</div><div class="arrow">→</div>
-  <div class="node">Google login</div><div class="arrow">→</div>
-  <div class="node">Callback</div><div class="arrow">→</div>
-  <div class="node">Session</div>
+  <span class="box">User</span><span class="arrow">→</span>
+  <span class="box">Google proves identity</span><span class="arrow">→</span>
+  <span class="box">Your app trusts verified email</span>
 </div>
 
-<div class="callout">Your app does not handle the Google password. It asks Google: “Who is this user?”</div>
+> Your app should not handle Google passwords. Google handles login; your app handles authorization.
 
 ---
 
-## Setup pieces
+## Authentication vs authorization
 
-<div class="grid2">
-<div class="card"><h3>Google Cloud Console</h3><p>OAuth client ID, client secret, authorized redirect URI.</p></div>
-<div class="card"><h3>FastAPI app</h3><p>Routes for login, callback, logout, current user.</p></div>
+<div class="split">
+<div class="card"><h3>Authentication</h3><p class="small">Who are you? Example: Google says this email is real.</p></div>
+<div class="card"><h3>Authorization</h3><p class="small">Are you allowed here? Example: email exists in local allowlist.</p></div>
 </div>
 
-```text
-Redirect URI example:
-http://localhost:8000/auth/callback
-```
-
 ---
 
-## Route design
-
-```text
-GET /                 public page
-GET /login            redirect user to Google
-GET /auth/callback    Google sends user back here
-GET /me               protected route
-POST /logout          clear session
-```
-
-<p class="muted">Keep authentication routes boring and predictable.</p>
-
----
-
-## Session vs bearer token
-
-<div class="grid2">
-<div class="card"><h3>Session cookie</h3><p>Good for browser apps. Server remembers login data.</p></div>
-<div class="card"><h3>Bearer token</h3><p>Good for APIs, mobile apps, and service-to-service calls.</p></div>
-</div>
-
-<div class="callout warn">For a beginner FastAPI + browser demo, session cookie is the simplest mental model.</div>
-
----
-
-## Local DB controls access
+## OAuth flow
 
 <div class="flow">
-  <div class="node">Google says<br>email verified</div><div class="arrow">→</div>
-  <div class="node">Your DB checks<br>allowed?</div><div class="arrow">→</div>
-  <div class="node">Allow / deny</div>
+  <span class="box">/login</span><span class="arrow">→</span>
+  <span class="box">Google consent</span><span class="arrow">→</span>
+  <span class="box">/auth/callback</span><span class="arrow">→</span>
+  <span class="box">Create session</span><span class="arrow">→</span>
+  <span class="box">Protected route</span>
 </div>
-
-```python
-ALLOWED_USERS = {
-    "student1@example.com": {"role": "student"},
-    "ta@example.com": {"role": "admin"},
-}
-```
 
 ---
 
-## Install dependencies
+## Install
 
 ```bash
-pip install fastapi uvicorn authlib itsdangerous python-dotenv
+uv add fastapi uvicorn authlib itsdangerous sqlmodel
 ```
 
 ```python
 from fastapi import FastAPI, Request, HTTPException
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import RedirectResponse
-from authlib.integrations.starlette_client import OAuth
+
+app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key="change-me")
 ```
 
 ---
 
-## App + OAuth registration
+## OAuth client setup
 
 ```python
-app = FastAPI()
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
+from authlib.integrations.starlette_client import OAuth
+
 
 oauth = OAuth()
 oauth.register(
     name="google",
-    client_id=GOOGLE_CLIENT_ID,
-    client_secret=GOOGLE_CLIENT_SECRET,
+    client_id="GOOGLE_CLIENT_ID",
+    client_secret="GOOGLE_CLIENT_SECRET",
     server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
     client_kwargs={"scope": "openid email profile"},
 )
@@ -112,30 +75,39 @@ oauth.register(
 
 ---
 
-## Login + callback
+## Login route
 
 ```python
 @app.get("/login")
 async def login(request: Request):
     redirect_uri = request.url_for("auth_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
+```
 
+<p class="small">This sends the user to Google with your app’s callback URL.</p>
+
+---
+
+## Callback route
+
+```python
 @app.get("/auth/callback")
 async def auth_callback(request: Request):
     token = await oauth.google.authorize_access_token(request)
     user = token.get("userinfo")
-    if user["email"] not in ALLOWED_USERS:
-        raise HTTPException(status_code=403, detail="Not allowed")
-    request.session["user"] = dict(user)
-    return RedirectResponse("/me")
+    request.session["user"] = {
+        "email": user["email"],
+        "name": user.get("name"),
+    }
+    return {"message": "logged in", "user": request.session["user"]}
 ```
 
 ---
 
-## Protected route
+## Basic protected route
 
 ```python
-def require_user(request: Request):
+def current_user(request: Request):
     user = request.session.get("user")
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
@@ -143,28 +115,90 @@ def require_user(request: Request):
 
 @app.get("/me")
 def me(request: Request):
-    user = require_user(request)
-    return {"email": user["email"], "name": user.get("name")}
+    return current_user(request)
 ```
 
 ---
 
-## Security mistakes to avoid
+## Local allow / disallow users
 
-<ul class="checklist">
-<li>Do not commit <strong>client secret</strong>.</li>
-<li>Use HTTPS redirect URI in production.</li>
-<li>Use a long random session secret.</li>
-<li>Check <strong>email_verified</strong> when relying on email identity.</li>
-<li>Do not treat Google login as role authorization; roles come from your DB.</li>
-</ul>
+```python
+ALLOWED_EMAILS = {
+    "teacher@example.com",
+    "student@example.com",
+}
+
+@app.get("/dashboard")
+def dashboard(request: Request):
+    user = current_user(request)
+    if user["email"] not in ALLOWED_EMAILS:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    return {"message": "welcome", "email": user["email"]}
+```
 
 ---
 
-## Teaching demo plan
+## Replace allowlist with database
 
-<div class="grid3">
-<div class="card"><div class="number">1</div><p>Public page with login button.</p></div>
-<div class="card"><div class="number">2</div><p>Google callback stores session.</p></div>
-<div class="card"><div class="number">3</div><p>Local DB allowlist denies unknown users.</p></div>
-</div>
+```python
+from sqlmodel import SQLModel, Field, Session, create_engine, select
+
+class AllowedUser(SQLModel, table=True):
+    email: str = Field(primary_key=True)
+    active: bool = True
+
+engine = create_engine("sqlite:///users.db")
+SQLModel.metadata.create_all(engine)
+```
+
+---
+
+## Check database permission
+
+```python
+def is_allowed(email: str) -> bool:
+    with Session(engine) as session:
+        row = session.exec(
+            select(AllowedUser).where(AllowedUser.email == email)
+        ).first()
+        return bool(row and row.active)
+```
+
+---
+
+## Logout
+
+```python
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return {"message": "logged out"}
+```
+
+<p class="small">Session cookie remains in browser, but server-side user data is cleared.</p>
+
+---
+
+## Security checklist
+
+- Use HTTPS in production.
+- Store secrets in environment variables.
+- Restrict Google redirect URI exactly.
+- Use strong session secret.
+- Check email allowlist after login.
+- Do not trust frontend-only checks.
+
+---
+
+## Practice
+
+1. Create <code>/login</code>, <code>/me</code>, <code>/logout</code>.
+2. Add SQLite allowlist table.
+3. Add <code>/admin</code> route only for active allowed users.
+4. Show a clear 403 for blocked users.
+
+---
+
+# Mental model
+
+**Google confirms identity. Your database decides access. Session remembers the logged-in user.**

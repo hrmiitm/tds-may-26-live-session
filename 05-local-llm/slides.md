@@ -1,97 +1,68 @@
-<div class="hero-center">
-<div>
-<div class="title-kicker">TDS • Local AI Serving</div>
-<h1>Local LLM</h1>
-<p class="big">Ollama for easy local models, vLLM for high-throughput serving, and APIs to connect your apps.</p>
-<p><span class="tag">Ollama</span><span class="tag">vLLM</span><span class="tag">parameters</span><span class="tag">quantization</span><span class="tag">REST</span></p>
-</div>
+<div class="titlemark">TDS AI Systems • Topic 5</div>
+
+# Local LLM
+
+Ollama, vLLM, model parameters, quantization, REST API and Modelfiles.
+
+<span class="pill">Ollama</span><span class="pill">vLLM</span><span class="pill">Quantization</span><span class="pill">REST API</span><span class="pill">Modelfile</span>
+
+---
+
+## Why local LLM?
+
+<div class="three">
+<div class="card"><b>Privacy</b><p class="small">Data can stay on your machine/server.</p></div>
+<div class="card"><b>Control</b><p class="small">Choose model, parameters, prompt format.</p></div>
+<div class="card"><b>Cost</b><p class="small">Useful for repeated experiments and demos.</p></div>
 </div>
 
 ---
 
-## Choose the right server
+## Ollama vs vLLM
 
-<div class="grid2">
-<div class="card"><h3>Ollama</h3><p>Best for learning, quick local demos, model files, simple REST API.</p></div>
-<div class="card"><h3>vLLM</h3><p>Best for GPU serving, batching, OpenAI-compatible endpoint, more throughput.</p></div>
+<div class="split">
+<div class="card"><h3>Ollama</h3><p class="small">Simple local model runner. Great for laptops, demos, REST API, Modelfiles.</p></div>
+<div class="card"><h3>vLLM</h3><p class="small">High-throughput serving engine. Better for GPUs, batching, production-style serving.</p></div>
 </div>
-
-<div class="callout">Do not start with infrastructure. Start with one model answering one request correctly.</div>
 
 ---
 
-## Request flow
-
-<div class="flow">
-  <div class="node">User prompt</div><div class="arrow">→</div>
-  <div class="node">FastAPI app</div><div class="arrow">→</div>
-  <div class="node">Local LLM server</div><div class="arrow">→</div>
-  <div class="node">Generated answer</div>
-</div>
-
-<p class="muted">The model server is just another HTTP service.</p>
-
----
-
-## Ollama basics
+## Ollama basic commands
 
 ```bash
 ollama pull llama3.2:3b
-ollama list
 ollama run llama3.2:3b
-ollama ps
+ollama list
+ollama rm llama3.2:3b
 ```
 
-<div class="grid3">
-<div class="card"><h3>pull</h3><p>Download model.</p></div>
-<div class="card"><h3>run</h3><p>Interactive chat.</p></div>
-<div class="card"><h3>serve</h3><p>Expose local API.</p></div>
-</div>
+<p class="small">Choose smaller models first if RAM/VRAM is limited.</p>
 
 ---
 
-## Generation parameters
-
-<div class="grid2">
-<div class="card"><h3>temperature</h3><p>Higher = more creative; lower = more deterministic.</p></div>
-<div class="card"><h3>top_p</h3><p>Limits next-token choices to likely options.</p></div>
-<div class="card"><h3>num_ctx</h3><p>How much context the model can read.</p></div>
-<div class="card"><h3>max tokens</h3><p>How long the answer can be.</p></div>
-</div>
-
----
-
-## Quantization: why smaller models run
-
-<div class="flow">
-  <div class="node">Full precision</div><div class="arrow">→</div>
-  <div class="node">Less memory</div><div class="arrow">→</div>
-  <div class="node">Lower precision</div><div class="arrow">→</div>
-  <div class="node">Possible quality drop</div>
-</div>
-
-<div class="callout warn">Quantization is a trade-off: fit model on your machine, but test answer quality for your task.</div>
-
----
-
-## Ollama Modelfile
-
-```text
-FROM llama3.2:3b
-
-SYSTEM """
-You are a concise teaching assistant for TDS students.
-Explain with small examples.
-"""
-
-PARAMETER temperature 0.2
-PARAMETER num_ctx 4096
-```
+## Run model with parameters
 
 ```bash
-ollama create tds-teacher -f Modelfile
-ollama run tds-teacher
+ollama run llama3.2:3b
 ```
+
+Inside chat:
+
+```text
+/set parameter temperature 0.2
+/set parameter num_ctx 4096
+/set parameter top_p 0.9
+```
+
+---
+
+## Key parameters
+
+<div class="three">
+<div class="card"><b>temperature</b><p class="small">Lower = focused. Higher = creative.</p></div>
+<div class="card"><b>num_ctx</b><p class="small">Context window. More tokens need more memory.</p></div>
+<div class="card"><b>top_p</b><p class="small">Controls sampling diversity.</p></div>
+</div>
 
 ---
 
@@ -101,85 +72,130 @@ ollama run tds-teacher
 curl http://localhost:11434/api/generate \
   -d '{
     "model": "llama3.2:3b",
-    "prompt": "Explain Docker volume in one example",
+    "prompt": "Explain Docker in 3 lines",
     "stream": false
   }'
 ```
 
+<p class="small">This lets your FastAPI app call a local model.</p>
+
+---
+
+## FastAPI → Ollama
+
 ```python
 import httpx
+from fastapi import FastAPI
+from pydantic import BaseModel
 
-async with httpx.AsyncClient(timeout=60) as client:
-    r = await client.post("http://localhost:11434/api/generate", json={
-        "model": "llama3.2:3b",
-        "prompt": prompt,
-        "stream": False,
-    })
-```
+app = FastAPI()
 
----
+class Ask(BaseModel):
+    question: str
 
-## vLLM: OpenAI-compatible serving
-
-```bash
-python -m vllm.entrypoints.openai.api_server \
-  --model Qwen/Qwen2.5-0.5B-Instruct \
-  --host 0.0.0.0 \
-  --port 8001
-```
-
-```python
-from openai import OpenAI
-
-client = OpenAI(base_url="http://localhost:8001/v1", api_key="local")
-```
-
-<div class="callout">vLLM becomes useful when many users send requests or GPU batching matters.</div>
-
----
-
-## Performance knobs
-
-<div class="grid3">
-<div class="card"><h3>Model size</h3><p>Small model = faster; large model = more capable.</p></div>
-<div class="card"><h3>Context length</h3><p>Longer context consumes memory.</p></div>
-<div class="card"><h3>Batching</h3><p>Serve multiple requests more efficiently.</p></div>
-</div>
-
-<p class="muted">Measure latency, tokens/sec, memory, and answer quality.</p>
-
----
-
-## FastAPI gateway for local LLM
-
-```python
 @app.post("/ask")
-async def ask(req: AskRequest):
-    async with httpx.AsyncClient(timeout=90) as client:
-        res = await client.post(OLLAMA_URL, json={
-            "model": req.model,
-            "prompt": req.prompt,
+async def ask_llm(req: Ask):
+    async with httpx.AsyncClient(timeout=120) as client:
+        r = await client.post("http://localhost:11434/api/generate", json={
+            "model": "llama3.2:3b",
+            "prompt": req.question,
             "stream": False,
-            "options": {"temperature": req.temperature},
         })
-    return {"answer": res.json()["response"]}
+    return r.json()
 ```
+
+---
+
+## Quantization: the trade-off
 
 <div class="flow">
-  <div class="node">Validate request</div><div class="arrow">→</div>
-  <div class="node">Call model</div><div class="arrow">→</div>
-  <div class="node">Log latency</div><div class="arrow">→</div>
-  <div class="node">Return answer</div>
+  <span class="box">Original weights</span><span class="arrow">→</span>
+  <span class="box">Compressed weights</span><span class="arrow">→</span>
+  <span class="box">Less memory</span><span class="arrow">→</span>
+  <span class="box">Maybe lower quality</span>
+</div>
+
+```text
+Q4  = smaller, faster, lower memory
+Q8  = larger, often better quality
+FP16 = high quality, heavy memory
+```
+
+---
+
+## Choosing a model
+
+<div class="three">
+<div class="card"><b>Laptop CPU</b><p class="small">1B–3B quantized</p></div>
+<div class="card"><b>Consumer GPU</b><p class="small">7B–14B quantized</p></div>
+<div class="card"><b>Server GPU</b><p class="small">vLLM + larger models</p></div>
 </div>
 
 ---
 
-## Local LLM checklist
+## Ollama Modelfile
 
-<ul class="checklist">
-<li>Start with one small model and one endpoint.</li>
-<li>Keep model name and temperature in config.</li>
-<li>Add timeouts to all model calls.</li>
-<li>Log prompt length, latency, model, and failures.</li>
-<li>Test quantized models with real course questions.</li>
-</ul>
+```text
+FROM llama3.2:3b
+PARAMETER temperature 0.2
+PARAMETER num_ctx 4096
+SYSTEM "You are a concise teaching assistant for TDS students."
+```
+
+```bash
+ollama create tds-teacher -f Modelfile
+ollama run tds-teacher
+```
+
+---
+
+## vLLM OpenAI-compatible server
+
+```bash
+pip install vllm
+python -m vllm.entrypoints.openai.api_server \
+  --model meta-llama/Llama-3.2-3B-Instruct \
+  --host 0.0.0.0 \
+  --port 8000
+```
+
+<p class="small">Then call it like an OpenAI-style chat completions API.</p>
+
+---
+
+## Local LLM app architecture
+
+<div class="flow">
+  <span class="box">Browser</span><span class="arrow">→</span>
+  <span class="box">FastAPI</span><span class="arrow">→</span>
+  <span class="box">Ollama/vLLM</span><span class="arrow">→</span>
+  <span class="box">Answer</span>
+</div>
+
+<p class="small">For RAG, insert retrieval before sending context to the model.</p>
+
+---
+
+## Debugging slow answers
+
+- Model too large for hardware.
+- Context window too high.
+- CPU-only inference.
+- Streaming disabled for long answers.
+- Too many concurrent users.
+
+---
+
+## Practice
+
+1. Pull one small model in Ollama.
+2. Call it using REST API.
+3. Create a custom Modelfile.
+4. Wrap it with FastAPI <code>/ask</code> route.
+5. Try temperature <code>0.1</code> vs <code>1.0</code>.
+
+---
+
+# Mental model
+
+**Ollama is easiest for local demos. vLLM is for serious serving. Quantization buys memory savings. Parameters shape behavior.**
