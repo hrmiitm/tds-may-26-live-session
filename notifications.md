@@ -1,3 +1,12 @@
+### GA-2 Realse [25 June]
+
+- Relase today
+- use meet https://meet.google.com/
+- link is here : exam.com
+- 
+---
+
+
 ### Normal GA PartB Release [25 June]
 
 - Some text here.
