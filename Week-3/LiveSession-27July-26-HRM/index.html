@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Podman + Ollama — Containers for Local AI</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/theme/white.css" id="theme">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/highlight/monokai.css">
+
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --ink: #0f172a;
+      --muted: #475569;
+      --soft: #e2e8f0;
+      --card: rgba(255,255,255,.82);
+      --blue: #2563eb;
+      --blue-soft: #dbeafe;
+      --violet: #7c3aed;
+      --violet-soft: #ede9fe;
+      --green: #059669;
+      --green-soft: #d1fae5;
+      --amber: #d97706;
+      --amber-soft: #fef3c7;
+      --red: #dc2626;
+      --red-soft: #fee2e2;
+      --shadow: 0 20px 70px rgba(15, 23, 42, .10);
+      --radius: 26px;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 12% 10%, #eef2ff 0, transparent 28%),
+        radial-gradient(circle at 88% 2%, #cffafe 0, transparent 32%),
+        linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+      color: var(--ink);
+    }
+
+    .reveal { font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; color: var(--ink); }
+    .reveal .slides { text-align: left; }
+    .reveal .slides section { box-sizing: border-box; height: 100%; padding: 28px 46px 42px; overflow: hidden; }
+    .reveal .slides section.present { display: flex !important; flex-direction: column; justify-content: flex-start; }
+    .reveal .slides section > div { width: 100%; max-width: 100%; box-sizing: border-box; }
+    .reveal h1,.reveal h2,.reveal h3,.reveal p,.reveal li { font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; color: var(--ink); letter-spacing: 0; overflow-wrap: break-word; }
+    .reveal h1 { font-size: 58px; line-height: 1.02; margin: 0 0 18px; font-weight: 900; }
+    .reveal h2 { font-size: 38px; line-height: 1.08; margin: 0 0 16px; font-weight: 850; }
+    .reveal h3 { font-size: 24px; line-height: 1.15; margin: 0 0 9px; font-weight: 800; }
+    .reveal p, .reveal li { font-size: 22px; line-height: 1.38; }
+    .reveal ul { margin: 10px 0 0 1.05em; }
+    .reveal li { margin: 8px 0; }
+    .reveal strong { color: #020617; }
+    .reveal a { color: #1d4ed8; text-decoration: none; }
+
+    .kicker { display: inline-flex; align-items: center; gap: 8px; width: fit-content; padding: 7px 12px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 16px; }
+    .subtitle { font-size: 26px !important; max-width: 920px; color: var(--muted) !important; }
+    .note { font-size: 17px !important; color: #64748b !important; }
+    .grid { display: grid; gap: 16px; min-width: 0; }
+    .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .card { min-width: 0; background: var(--card); border: 1px solid rgba(148, 163, 184, .30); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); backdrop-filter: blur(10px); }
+    .mini { padding: 16px 18px; border-radius: 20px; }
+    .mini p { font-size: 18px !important; margin: 0; color: var(--muted) !important; }
+    .mini h3 { font-size: 22px; }
+    .hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items: center; }
+    .big-number { font-size: 64px; font-weight: 900; line-height: 1; color: var(--blue); }
+    .pill { display: inline-block; padding: 7px 11px; border-radius: 999px; font-size: 15px; font-weight: 800; margin: 4px 5px 4px 0; background: var(--blue-soft); color: #1e3a8a; }
+    .pill.green { background: var(--green-soft); color: #065f46; }
+    .pill.violet { background: var(--violet-soft); color: #5b21b6; }
+    .pill.amber { background: var(--amber-soft); color: #92400e; }
+    .pill.red { background: var(--red-soft); color: #991b1b; }
+    .flow { display: flex; align-items: stretch; gap: 12px; margin-top: 12px; }
+    .step { flex: 1; position: relative; border: 1px solid rgba(148, 163, 184, .35); border-radius: 22px; padding: 18px; background: rgba(255,255,255,.86); box-shadow: 0 12px 35px rgba(15,23,42,.07); min-height: 128px; }
+    .step:not(:last-child)::after { content: "→"; position: absolute; right: -16px; top: 44%; color: #64748b; font-weight: 900; font-size: 24px; z-index: 2; }
+    .step h3 { font-size: 22px; margin-bottom: 6px; }
+    .step p { font-size: 17px !important; color: var(--muted) !important; margin: 0; }
+    .swimlane { display: grid; grid-template-columns: 190px 1fr; gap: 10px; margin-top: 10px; }
+    .lane-title { font-size: 17px; font-weight: 850; color: #334155; padding-top: 12px; }
+    .lane { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .lane .box { border-radius: 16px; padding: 12px; background: #fff; border: 1px solid #dbe3ef; min-height: 68px; font-size: 16px; font-weight: 700; }
+    .memory-stack { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .memory-layer { border-radius: 24px; padding: 22px; min-height: 250px; background: #fff; border: 1px solid #dbe3ef; box-shadow: var(--shadow); }
+    .memory-layer h3 { font-size: 16px; line-height: 1.16; word-break: normal; hyphens: none; }
+    .memory-layer p { font-size: 18px !important; color: var(--muted) !important; }
+    .checklist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; font-size: 19px; line-height: 1.32; background: rgba(255,255,255,.75); border: 1px solid #e2e8f0; border-radius: 18px; padding: 14px 15px; }
+    .check::before { content: "✓"; color: var(--green); font-weight: 900; }
+    .xcheck::before { content: "✕"; color: var(--red); }
+    .table { width: 100%; border-collapse: separate; border-spacing: 0 9px; font-size: 17px; }
+    .table th { text-align: left; color: #475569; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; padding: 0 14px; }
+    .table td { background: #fff; padding: 13px 14px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    .table td:first-child { border-left: 1px solid #e2e8f0; border-radius: 16px 0 0 16px; font-weight: 800; }
+    .table td:last-child { border-right: 1px solid #e2e8f0; border-radius: 0 16px 16px 0; }
+    pre.clean-code { box-sizing: border-box; width: 100%; max-width: 100%; margin: 0; background: #0f172a; border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow); white-space: pre-wrap; overflow: hidden !important; }
+    pre.clean-code code,
+    pre.clean-code code.hljs { display: block; max-width: 100%; font-family: "JetBrains Mono", monospace; font-size: 14px; line-height: 1.32; color: #e2e8f0; white-space: pre-wrap !important; overflow-wrap: anywhere; overflow: hidden !important; }
+    pre.clean-code code * { white-space: pre-wrap !important; overflow-wrap: anywhere; }
+    .card li { font-size: 16px; line-height: 1.32; }
+    .quote { font-size: 34px !important; line-height: 1.20 !important; font-weight: 800; color: #1e293b !important; }
+    .small-list li { font-size: 18px; line-height: 1.32; margin: 6px 0; }
+
+    #inkCanvas { position: fixed; inset: 0; z-index: 30; pointer-events: none; touch-action: none; }
+    #laserDot { position: fixed; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 999px; background: rgba(239,68,68,.24); border: 3px solid rgba(239,68,68,.9); box-shadow: 0 0 25px rgba(239,68,68,.75); z-index: 45; pointer-events: none; display:none; }
+    
+    /* Premium glassmorphic toolbar */
+    .helperbar {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(140%);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      z-index: 200;
+      background: rgba(15, 23, 42, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: white;
+      border-radius: 20px;
+      padding: 6px 12px;
+      box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+      opacity: 0;
+      pointer-events: auto;
+    }
+
+    .helperbar.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .dock-section {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dock-divider {
+      width: 1px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 0 2px;
+    }
+
+    .helperbar button {
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.7);
+      font: 600 13px/1 Inter, sans-serif;
+      padding: 6px 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .helperbar button:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+    }
+
+    .helperbar button.active {
+      background: rgba(37, 99, 235, 0.85);
+      color: white;
+      box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+    }
+
+    .helperbar button.btn-off {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .helperbar button.btn-off:hover {
+      background: rgba(239, 68, 68, 0.85);
+      color: white;
+    }
+
+    .dock-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Color picker dots */
+    .color-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .color-dot:hover {
+      transform: scale(1.15);
+    }
+    .color-dot.active {
+      border-color: white;
+      transform: scale(1.2);
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    /* Brush size dots */
+    .size-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .size-dot::after {
+      content: '';
+      width: var(--size);
+      height: var(--size);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.6);
+      transition: all 0.2s ease;
+    }
+    .size-dot:hover::after {
+      background: white;
+    }
+    .size-dot.active::after {
+      background: #2563eb;
+      box-shadow: 0 0 6px #2563eb;
+    }
+    .size-dot.active {
+      transform: scale(1.1);
+    }
+
+    /* Help tooltip */
+    .help-btn {
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .help-btn:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .help-btn[title]::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 130%;
+      left: 50%;
+      transform: translateX(-50%) translateY(5px);
+      background: rgba(15, 23, 42, 0.95);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.2s ease;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+    .help-btn:hover::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .reveal .slide-number { font-size: 14px; background: rgba(15,23,42,.75); border-radius: 8px; padding: 5px 7px; }
+    .reveal .controls { color: #2563eb; }
+    .reveal .progress span { background: #2563eb; }
+    @media print { .helperbar, #laserDot, #inkCanvas { display: none !important; } body { background: white; } }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+      <!--
+        Slides are loaded from slides.md in the same folder.
+        Run through a local server for browser security, for example:
+          python3 -m http.server 8000
+        Then open http://localhost:8000/
+      -->
+      <section
+        data-markdown="slides.md"
+        data-separator="^\s*---\s*$"
+        data-separator-vertical="^\s*--\s*$"
+        data-separator-notes="^Note:"
+        data-charset="utf-8">
+      </section>
+    </div>
+  </div>
+  <canvas id="inkCanvas"></canvas>
+  <div id="laserDot"></div>
+  <!-- Redesigned Minimal Annotation Dock -->
+  <div class="helperbar" aria-label="annotation dock">
+    <div class="dock-section tools">
+      <button data-tool="pen" onclick="setTool('pen', this)" title="Pen (P)">
+        <svg class="dock-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        <span>Pen</span>
+      </button>
+      <button data-tool="eraser" onclick="setTool('eraser', this)" title="Eraser (E)">
+        <svg class="dock-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M16.24 7.76L18.8 10.3c.78.78.78 2.05 0 2.83L11.83 20H20v2H9.41L4.59 17.17c-.78-.78-.78-2.05 0-2.83l11.65-11.65c.39-.39.9-.59 1.41-.59.51 0 1.02.2 1.41.59l4.59 4.59c.78.78.78 2.05 0 2.83L16.24 7.76zm-9.36 8L11 19.88l5.88-5.88-4.12-4.12-5.88 5.88z"/></svg>
+        <span>Eraser</span>
+      </button>
+      <button data-tool="laser" onclick="setTool('laser', this)" title="Laser (L)">
+        <svg class="dock-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        <span>Laser</span>
+      </button>
+    </div>
+    
+    <div class="dock-divider"></div>
+    
+    <div class="dock-section colors">
+      <button class="color-dot active" style="background-color: #2563eb; color: #2563eb;" onclick="changeInkColor('#2563eb', this)" title="Blue"></button>
+      <button class="color-dot" style="background-color: #dc2626; color: #dc2626;" onclick="changeInkColor('#dc2626', this)" title="Red"></button>
+      <button class="color-dot" style="background-color: #059669; color: #059669;" onclick="changeInkColor('#059669', this)" title="Green"></button>
+      <button class="color-dot" style="background-color: #0f172a; color: #0f172a;" onclick="changeInkColor('#0f172a', this)" title="Black"></button>
+    </div>
+    
+    <div class="dock-divider"></div>
+
+    <div class="dock-section brush-sizes">
+      <button class="size-dot active" style="--size: 4px;" onclick="changeBrushWidth(4, this)" title="Fine"></button>
+      <button class="size-dot" style="--size: 8px;" onclick="changeBrushWidth(8, this)" title="Medium"></button>
+      <button class="size-dot" style="--size: 14px;" onclick="changeBrushWidth(14, this)" title="Thick"></button>
+    </div>
+
+    <div class="dock-divider"></div>
+    
+    <div class="dock-section actions">
+      <button onclick="undoStroke()" title="Undo Last (Click)">
+        <svg class="dock-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+      </button>
+      <button onclick="clearSlideInk()" title="Clear Slide (Delete)">
+        <svg class="dock-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      </button>
+      <button onclick="toggleFullscreen()" title="Toggle Fullscreen (F)">
+        <svg class="dock-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+      </button>
+      <button onclick="setTool(null)" title="Pointer Mode (Esc)" class="btn-off">
+        <svg class="dock-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10.07 14.27a8.02 8.02 0 0 1-2.02-2.02L5 15v-9h9l-2.93 2.93a8.03 8.03 0 0 1 2.02 2.02L16 8v9h-9l2.07-2.73z"/></svg>
+        <span>Exit</span>
+      </button>
+    </div>
+
+    <div class="dock-divider"></div>
+
+    <div class="dock-section help-section">
+      <div class="help-btn" title="Shortcuts: P (Pen) · E (Eraser) · L (Laser) · Esc (Exit) · Del (Clear)">
+        <svg class="dock-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-2h2v2zm1.07-7.75l-.9.92C12.45 11.9 12 12.5 12 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/highlight/highlight.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/markdown/markdown.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/search/search.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/zoom/zoom.js"></script>
+
+  <script>
+    Reveal.initialize({
+      hash: true,
+      width: 1280,
+      height: 720,
+      margin: 0.055,
+      minScale: 0.25,
+      maxScale: 1.75,
+      center: false,
+      controls: true,
+      progress: true,
+      slideNumber: 'c/t',
+      transition: 'slide',
+      backgroundTransition: 'fade',
+      pdfSeparateFragments: false,
+      markdown: {
+        smartypants: true
+      },
+      highlight: { escapeHTML: false },
+      plugins: [ RevealMarkdown, RevealHighlight, RevealNotes, RevealSearch, RevealZoom ]
+    });
+
+    // Helpful message when slides.md cannot be loaded (commonly caused by opening index.html directly via file://).
+    window.addEventListener('unhandledrejection', (event) => {
+      const msg = String(event.reason || '').toLowerCase();
+      if (msg.includes('slides.md') || msg.includes('failed to fetch') || msg.includes('access to XMLHttpRequest'.toLowerCase())) {
+        const slides = document.querySelector('.reveal .slides');
+        if (slides && !slides.dataset.errorShown) {
+          slides.dataset.errorShown = '1';
+          slides.innerHTML = `
+            <section>
+              <div class="card" style="max-width:900px;margin:80px auto;text-align:left;">
+                <div class="kicker">slides.md not loaded</div>
+                <h2>Open this through a local server</h2>
+                <p class="subtitle" style="font-size:24px!important;">Keep <code>index.html</code> and <code>slides.md</code> in the same folder, then run:</p>
+                <pre class="clean-code"><code>python3 -m http.server 8000</code></pre>
+                <p class="note" style="margin-top:14px;">Then open <code>http://localhost:8000/</code>. Browsers usually block loading local Markdown files from <code>file://</code>.</p>
+              </div>
+            </section>`;
+        }
+      }
+    });
+
+    const canvas = document.getElementById('inkCanvas');
+    const ctx = canvas.getContext('2d');
+    const laser = document.getElementById('laserDot');
+    const STORAGE_KEY = 'podman-ollama-ink-v1';
+    
+    let tool = null;
+    let drawing = false;
+    let currentStroke = null;
+    let ink = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+
+    // Drawing settings variables
+    let selectedColor = '#2563eb';
+    let selectedWidth = 4;
+
+    function slideKey() { const i = Reveal.getIndices(); return `${i.h || 0}.${i.v || 0}`; }
+    function saveInk() { localStorage.setItem(STORAGE_KEY, JSON.stringify(ink)); }
+    function resizeInk() { const dpr = window.devicePixelRatio || 1; canvas.width = Math.floor(window.innerWidth * dpr); canvas.height = Math.floor(window.innerHeight * dpr); canvas.style.width = '100vw'; canvas.style.height = '100vh'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); redrawInk(); }
+    function pointFromEvent(e) { return { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight, p: e.pressure || 0.55 }; }
+    function absPoint(pt) { return { x: pt.x * window.innerWidth, y: pt.y * window.innerHeight, p: pt.p || 0.55 }; }
+
+    function drawStroke(stroke) {
+      if (!stroke || stroke.points.length < 2) return;
+      ctx.save();
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
+      ctx.globalAlpha = stroke.tool === 'highlighter' ? 0.28 : 1;
+      ctx.strokeStyle = stroke.color;
+      for (let i = 1; i < stroke.points.length; i++) {
+        const a = absPoint(stroke.points[i - 1]);
+        const b = absPoint(stroke.points[i]);
+        ctx.lineWidth = (stroke.width || 5) * Math.max(0.35, b.p || 0.55) * (stroke.tool === 'highlighter' ? 2.4 : 1);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    function redrawInk() { ctx.clearRect(0, 0, canvas.width, canvas.height); (ink[slideKey()] || []).forEach(drawStroke); }
+    
+    function setTool(nextTool, btn) {
+      tool = nextTool;
+      canvas.style.pointerEvents = tool ? 'auto' : 'none';
+      document.querySelectorAll('.helperbar [data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+      laser.style.display = 'none';
+      if (tool) {
+        showToolbar();
+      } else {
+        hideToolbar();
+      }
+    }
+
+    function changeInkColor(color, btn) {
+      selectedColor = color;
+      document.querySelectorAll('.color-dot').forEach(el => el.classList.toggle('active', el === btn));
+    }
+
+    function changeBrushWidth(width, btn) {
+      selectedWidth = width;
+      document.querySelectorAll('.size-dot').forEach(el => el.classList.toggle('active', el === btn));
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!tool) return;
+      e.preventDefault();
+      if (tool === 'laser') { moveLaser(e); return; }
+      drawing = true;
+      canvas.setPointerCapture(e.pointerId);
+      currentStroke = { tool, color: selectedColor, width: selectedWidth, points: [pointFromEvent(e)] };
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if (!tool) return;
+      if (tool === 'laser') { moveLaser(e); return; }
+      if (!drawing || !currentStroke) return;
+      currentStroke.points.push(pointFromEvent(e));
+      redrawInk(); drawStroke(currentStroke);
+    });
+    canvas.addEventListener('pointerup', (e) => {
+      if (!drawing || !currentStroke) return;
+      drawing = false;
+      const key = slideKey();
+      ink[key] = ink[key] || [];
+      ink[key].push(currentStroke);
+      currentStroke = null;
+      saveInk(); redrawInk();
+    });
+
+    let laserTimer;
+    function moveLaser(e) { laser.style.left = e.clientX + 'px'; laser.style.top = e.clientY + 'px'; laser.style.display = 'block'; clearTimeout(laserTimer); laserTimer = setTimeout(() => laser.style.display = 'none', 700); }
+    function undoStroke() { const key = slideKey(); if (ink[key]?.length) { ink[key].pop(); saveInk(); redrawInk(); } }
+    function clearSlideInk() { ink[slideKey()] = []; saveInk(); redrawInk(); }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    // Auto-hide toolbar script logic
+    const helperbar = document.querySelector('.helperbar');
+    let isInteractingWithToolbar = false;
+    let hideTimeout = null;
+    window.lastMouseMoveEvent = null;
+
+    function showToolbar() {
+      helperbar.classList.add('visible');
+      if (hideTimeout) clearTimeout(hideTimeout);
+    }
+
+    function hideToolbar() {
+      if (isInteractingWithToolbar) return; // Keep visible if hovering toolbar
+      if (hideTimeout) clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(() => {
+        if (!isInteractingWithToolbar) {
+          helperbar.classList.remove('visible');
+        }
+      }, 800); // 800ms delay
+    }
+
+    function flashToolbar() {
+      showToolbar();
+      setTimeout(() => {
+        const threshold = window.innerHeight - 80;
+        if (!window.lastMouseMoveEvent || window.lastMouseMoveEvent.clientY < threshold) {
+          hideToolbar();
+        }
+      }, 2500);
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      window.lastMouseMoveEvent = e;
+      const threshold = window.innerHeight - 80;
+      if (e.clientY > threshold) {
+        showToolbar();
+      } else {
+        hideToolbar();
+      }
+    });
+
+    document.addEventListener('pointermove', (e) => {
+      window.lastMouseMoveEvent = e;
+      const threshold = window.innerHeight - 80;
+      if (e.clientY > threshold) {
+        showToolbar();
+      } else {
+        hideToolbar();
+      }
+    }, { passive: true });
+
+    helperbar.addEventListener('mouseenter', () => {
+      isInteractingWithToolbar = true;
+      showToolbar();
+    });
+
+    helperbar.addEventListener('mouseleave', () => {
+      isInteractingWithToolbar = false;
+      hideToolbar();
+    });
+
+    window.addEventListener('resize', resizeInk);
+    Reveal.on('ready', resizeInk);
+    Reveal.on('slidechanged', redrawInk);
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      let triggered = false;
+      if (k === 'p') { setTool('pen'); triggered = true; }
+      if (k === 'e') { setTool('eraser'); triggered = true; }
+      if (k === 'l') { setTool('laser'); triggered = true; }
+      if (k === 'f') { toggleFullscreen(); triggered = true; }
+      if (k === 'escape') { setTool(null); triggered = true; }
+      if (e.key === 'Delete') { clearSlideInk(); triggered = true; }
+      if (triggered) {
+        flashToolbar();
+      }
+    });
+  </script>
+</body>
+</html>
